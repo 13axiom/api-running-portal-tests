@@ -1,0 +1,6 @@
+.env
+allure-results/
+allure-report/
+bin/
+vendor/
+*.out
