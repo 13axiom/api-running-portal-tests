@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.runningportal'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    restAssuredVersion  = '5.4.0'
+    testNGVersion       = '7.9.0'
+    allureVersion       = '2.25.0'
+    jacksonVersion      = '2.17.0'
+    slf4jVersion        = '2.0.12'
+}
+
+dependencies {
+    // REST Assured
+    implementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    implementation "io.rest-assured:json-path:${restAssuredVersion}"
+
+    // Jackson (JSON deserialization)
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+
+    // Allure core — needed by BaseClient (AllureRestAssured filter) in src/main/java
+    implementation "io.qameta.allure:allure-java-commons:${allureVersion}"
+    implementation "io.qameta.allure:allure-rest-assured:${allureVersion}"
+
+    // TestNG
+    testImplementation "org.testng:testng:${testNGVersion}"
+
+    // Allure TestNG adapter (binds Allure to TestNG lifecycle)
+    testImplementation "io.qameta.allure:allure-testng:${allureVersion}"
+
+    // Logging
+    testImplementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+}
+
+test {
+    useTestNG {
+        suites 'src/test/resources/testng.xml'
+    }
+    // Forward all JVM system properties starting with "test." to the test JVM
+    systemProperties = System.properties.findAll { k, v -> k.toString().startsWith("test.") }
+    // Always show stdout from tests
+    testLogging {
+        events "passed", "failed", "skipped"
+        showStandardStreams = true
+    }
+    // Allure results dir
+    systemProperty 'allure.results.directory', "${buildDir}/allure-results"
+}
+
+configurations.all {
+    resolutionStrategy {
+        force "org.testng:testng:${testNGVersion}"
+    }
+}

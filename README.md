@@ -1,115 +1,112 @@
-# api-tests
+# api-running-portal-tests
 
-Integration test suite for **weather-api** and **races-api** backends.
+Integration test suite for **Running Portal** — covers `weather-api` and `races-api` REST endpoints.
 
-Built with Go + [allure-go](https://github.com/ozontech/allure-go) — tests run with `go test`, results are published as an interactive Allure HTML report on GitHub Pages.
+**Stack:** Java 21 · Gradle 8.7 · TestNG · REST Assured · Allure
 
-## Test coverage
-
-| Suite | Tests | What's checked |
-|-------|-------|----------------|
-| **Cities** | 4 | `/health`, `/cities` list non-empty, required fields, valid JSON |
-| **Weather** | 5 | `/weather/{city}` 200, temperature range, synced_at present, 404 for unknown city, all seeded cities |
-| **Air Quality** | 3 | `/air` array, AQI 1-5, PM2.5 non-negative |
-| **Races** | 8 | `/races` array, region filter SPb + Cyprus, limit, upcoming filter, required fields, URLs have scheme, sync result |
-| **Auth** | 8 | Each protected endpoint returns 401 without key; health endpoints are public |
-
-**28 tests total** across 5 suites.
-
-## Run locally
-
-### Prerequisites
-- Both backends running (see their READMEs)
-- Go 1.21+
-- [Allure CLI](https://allurereport.org/docs/install-for-macos/) for HTML reports (optional)
-
-```bash
-# macOS
-brew install allure
-```
-
-### Setup
-
-```bash
-git clone https://github.com/13axiom/api-running-portal-tests.git
-cd api-tests
-make setup          # go mod tidy
-
-cp .env.example .env
-# .env is pre-filled with localhost defaults
-```
-
-### Run tests
-
-```bash
-# All tests
-make test
-
-# Single suite
-make test-weather
-make test-races
-make test-auth
-
-# Run + generate + open report in one command
-make test-report
-```
-
-### View the Allure report
-
-```bash
-# After running tests:
-make report         # generates HTML in ./allure-report/
-make open-report    # opens in browser
-```
-
-## GitHub CI
-
-`.github/workflows/ci.yml` does the following on every push to `main` / `develop`:
-
-1. **Starts PostgreSQL** as a service container
-2. **Checks out** `weather-api` and `races-api` side-by-side
-3. **Starts both backends** and waits for their `/health` endpoints
-4. **Runs all tests** — failures don't stop the pipeline (so the report is always generated)
-5. **Generates Allure HTML report** with run history / trend charts
-6. **Publishes to GitHub Pages** — direct link is printed in the CI summary
-
-### GitHub setup (one-time)
-
-1. Go to repo **Settings → Pages**
-   - Source: **GitHub Actions**
-
-2. Go to **Settings → Secrets and variables → Actions**, add:
-   - `INTERNAL_API_KEY` — shared key from `.env` files
-   - `OWM_API_KEY` — OpenWeatherMap key (for air quality tests)
-
-3. If your backend repos are private, also add:
-   - `GH_PAT` — a personal access token with `repo` scope, then update `ci.yml` to use it
-
-After the first successful run, the report is available at:
-```
-https://13axiom.github.io/api-tests/
-```
+---
 
 ## Project structure
 
 ```
-api-tests/
-  internal/
-    config/          — loads env vars
-    client/
-      base.go        — shared HTTP client (do, Get, Post, Parse)
-      weather_client.go — typed methods for weather-api
-      races_client.go   — typed methods for races-api
-  tests/
-    weather/
-      cities_test.go      — /health, /cities
-      weather_test.go     — /weather/{city}
-      air_quality_test.go — /air, /air/{city}
-    races/
-      races_test.go       — /races, /races/sync
-    auth/
-      auth_test.go        — 401 checks + public endpoint checks
-  .github/workflows/ci.yml
-  Makefile
-  .env.example
+src/
+  main/java/com/runningportal/
+    config/   Config.java          — reads env vars (API URLs, key)
+    model/    *.java               — POJO response models
+    client/   *ApiClient.java      — REST Assured HTTP clients
+    steps/    *Steps.java          — Allure @Step service layer
+
+  test/java/com/runningportal/
+    weather/  *Test.java           — weather-api test cases
+    races/    *Test.java           — races-api test cases
+    auth/     *Test.java           — auth guard tests (both APIs)
+
+  test/resources/
+    testng.xml                     — suite definition
 ```
+
+---
+
+## Local setup
+
+### Prerequisites
+
+- **Java 21** — e.g. [Temurin](https://adoptium.net/)
+- **Gradle 8.7** — install via [sdkman](https://sdkman.io/):
+  ```bash
+  sdk install gradle 8.7
+  ```
+  Or download from https://gradle.org/releases/ and add to PATH.
+- Both APIs running locally (see their respective READMEs)
+
+### Environment variables
+
+```bash
+export WEATHER_API_URL=http://localhost:8080
+export RACES_API_URL=http://localhost:8081
+export INTERNAL_API_KEY=your_shared_secret
+```
+
+### Run all tests
+
+```bash
+gradle test
+```
+
+### Run a specific suite
+
+```bash
+gradle test -Dsuite=weather   # weather-api tests only
+gradle test -Dsuite=races     # races-api tests only
+gradle test -Dsuite=auth      # auth guard tests only
+```
+
+### View Allure report locally
+
+```bash
+# Install Allure CLI first: https://allurereport.org/docs/install/
+allure serve build/allure-results
+```
+
+---
+
+## CI integration
+
+The tests are pulled by both backend repos in their GitHub Actions pipeline:
+
+- `weather-api` CI — runs **weather suite** after unit tests pass
+- `races-api` CI — runs **races suite** after unit tests pass
+- This repo's own CI — runs **all suites** against both live backends
+
+Each CI job uploads an **Allure HTML report** as a downloadable artifact.
+
+### GitHub setup (one-time)
+
+1. **Settings → Pages** → Source: **GitHub Actions**
+2. **Settings → Secrets → Actions**, add:
+   - `INTERNAL_API_KEY` — shared key matching the backend `.env`
+3. If backend repos are private, also add:
+   - `GH_PAT` — personal access token with `repo` scope, and uncomment the `token:` line in `ci.yml`
+
+### Enable / disable integration tests
+
+Integration tests run on every PR to `main` by default.
+To disable temporarily, set a **Repository Variable**:
+
+```
+Settings → Secrets and variables → Actions → Variables
+ENABLE_API_TESTS = false
+```
+
+Remove the variable (or set to `true`) to re-enable.
+
+---
+
+## Adding new tests
+
+1. Add a test class under `src/test/java/com/runningportal/<suite>/`
+2. Annotate with `@Epic`, `@Feature`, `@Story`, `@Severity` from Allure
+3. Use the `*Steps` class — never call the HTTP client directly from tests
+4. To add a new API call: client first → step method second → test calls step
+
+The pattern: **Arrange → Act → Assert** with `Allure.step("...", () -> {...})` for assertion blocks.
