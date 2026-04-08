@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<!--
+  Default suite: runs ALL tests.
+  CI overrides this via -Dsuite=weather / -Dsuite=races / -Dsuite=auth
+  (see build.gradle systemProperties block).
+
+  Usage:
+    ./gradlew test                          # all tests
+    ./gradlew test -Dsuite=weather          # weather tests only
+    ./gradlew test -Dsuite=races            # races tests only
+    ./gradlew test -Dsuite=auth             # auth tests only
+-->
+
+<suite name="Running Portal API Tests" verbose="1" parallel="false">
+
+  <test name="Weather Suite">
+    <packages>
+      <package name="com.runningportal.weather"/>
+    </packages>
+  </test>
+
+  <test name="Races Suite">
+    <packages>
+      <package name="com.runningportal.races"/>
+    </packages>
+  </test>
+
+  <test name="Auth Suite">
+    <packages>
+      <package name="com.runningportal.auth"/>
+    </packages>
+  </test>
+
+</suite>
